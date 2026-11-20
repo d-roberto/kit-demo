@@ -3,72 +3,72 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0e1014">
+<meta name="theme-color" content="#0b1020">
 <title>Verifica kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort.webgpu.min.js"></script>
 <style>
-  :root { --bg:#0e1014; --card:#171a21; --bordo:#262a33; --txt:#eceef3; --mute:#8b91a1;
-          --ok:#22c55e; --ko:#ef4444; --attesa:#f59e0b; }
+  :root { --bg:#0b1020; --card:#121935; --linea:#1b2340; --txt:#f2f4fa; --mute:#9aa3c0; --tenue:#5d6688;
+          --ok:#34d399; --ko:#f05252; --attesa:#fbbf24; --stato:#5d6688; --alone:rgba(93,102,136,.18); }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--txt);
-         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
-  main { max-width: 720px; margin: 0 auto;
-         padding: max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); }
-  header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
-  h1 { font-size: 22px; margin: 0; letter-spacing: -0.02em; }
+  body { margin: 0; background: var(--bg); color: var(--txt); font-family: "Space Grotesk", -apple-system, system-ui, sans-serif; }
+  main { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;
+         padding: max(18px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); }
+  body.ok { --stato: var(--ok); --alone: rgba(52,211,153,.18); }
+  body.ko { --stato: var(--ko); --alone: rgba(240,82,82,.18); }
+  body.attesa { --stato: var(--attesa); --alone: rgba(251,191,36,.16); }
+
+  header { display: flex; justify-content: space-between; align-items: baseline; }
+  h1 { font-size: 21px; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   .sub { font-size: 12px; color: var(--mute); }
 
-  #esito { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 20px;
-           background: var(--card); border: 1px solid var(--bordo); transition: background .25s, border-color .25s; }
-  #esito .icona { flex: none; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center;
-                  font-size: 28px; font-weight: 800; background: var(--bordo); transition: background .25s; }
-  #esito .titolo { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
-  #esito .msg { font-size: 15px; color: var(--mute); margin-top: 2px; }
-  #esito.ok { background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.45); }
-  #esito.ok .icona { background: var(--ok); color: #052e14; }
-  #esito.ko { background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.45); }
-  #esito.ko .icona { background: var(--ko); color: #3b0606; }
-  #esito.attesa { background: rgba(245,158,11,.10); border-color: rgba(245,158,11,.35); }
-  #esito.attesa .icona { background: var(--attesa); color: #3a2402; animation: pulsa 1s infinite; }
-  @keyframes pulsa { 50% { opacity: .45; } }
-
-  .vista { position: relative; margin: 14px 0; border-radius: 20px; overflow: hidden; background: #000;
-           aspect-ratio: 2994 / 2400; border: 1px solid var(--bordo); }
+  .vista { position: relative; aspect-ratio: 2994 / 2400; border-radius: 22px; overflow: hidden; background: #050814;
+           border: 3px solid var(--stato); box-shadow: 0 0 0 6px var(--alone); transition: border-color .25s, box-shadow .25s; }
   #tela { width: 100%; height: 100%; display: block; }
-  #vuoto { position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
-           color: var(--mute); padding: 24px; font-size: 15px; line-height: 1.4; }
-  #vuoto b { color: var(--txt); display: block; font-size: 17px; margin-bottom: 4px; }
+  #vuoto { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px;
+           color: var(--mute); font-size: 15px; line-height: 1.45; }
+  #vuoto b { display: block; color: var(--txt); font-size: 17px; margin-bottom: 4px; }
 
-  #chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .chip { background: var(--card); border: 2px solid var(--bordo); border-radius: 16px; padding: 10px 4px 9px;
-          text-align: center; transition: border-color .2s, opacity .2s, transform .2s; }
-  .chip .e { font-size: 26px; line-height: 1; }
-  .chip .n { font-size: 12px; margin-top: 6px; color: var(--mute); font-weight: 600; }
-  .chip.si { border-color: var(--ok); }
-  .chip.si .n { color: var(--ok); }
-  .chip.no { border-color: var(--ko); opacity: .8; }
-  .chip.no .n { color: var(--ko); }
+  .centro { display: flex; justify-content: center; }
+  .anello { position: relative; width: 200px; height: 200px; }
+  .anello svg { display: block; }
+  .anello circle { transition: stroke .25s; }
+  .testo { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
+  #numero { font-size: 54px; font-weight: 700; line-height: 1; }
+  #numero span { color: var(--tenue); }
+  #messaggio { font-size: 15px; font-weight: 600; color: var(--stato); max-width: 150px; line-height: 1.25; }
 
-  .comandi { display: flex; gap: 10px; margin-top: 16px; }
-  #b_avvia { flex: 1; font: inherit; font-size: 17px; font-weight: 700; padding: 15px; border: 0;
-             border-radius: 16px; background: var(--txt); color: #0e1014; }
+  #chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .chip { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .tondo { position: relative; width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--tenue);
+           display: grid; place-items: center; background: rgba(255,255,255,.04); color: var(--tenue); transition: .2s; }
+  .chip.si .tondo { border-color: var(--ok); color: var(--ok); }
+  .chip.no .tondo { border-color: var(--ko); color: var(--ko); }
+  .conta { position: absolute; top: -6px; right: -8px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px;
+           background: var(--txt); color: var(--bg); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+  .chip.no .conta { background: var(--ko); color: #fff; }
+  .chip .nome { font-size: 12px; color: #c5cbe0; }
+
+  #dati { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--linea);
+          border: 1px solid var(--linea); border-radius: 14px; overflow: hidden; }
+  #dati div { padding: 9px 12px; display: flex; flex-direction: column; gap: 3px; background: var(--bg); }
+  #dati small { font-size: 10px; letter-spacing: .1em; color: var(--tenue); }
+  #dati b { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .comandi { display: flex; gap: 10px; }
+  #b_avvia { flex: 1; height: 52px; border: 0; border-radius: 999px; background: var(--txt); color: var(--bg);
+             font: inherit; font-size: 16px; font-weight: 700; }
   #b_avvia:disabled { opacity: .4; }
-  #b_avvia.ferma { background: var(--card); color: var(--txt); border: 1px solid var(--bordo); }
-  .secondario { font-size: 15px; padding: 15px 16px; border-radius: 16px; background: var(--card);
-                border: 1px solid var(--bordo); color: var(--txt); white-space: nowrap; }
-  footer { margin-top: 14px; font-size: 12px; color: var(--mute); text-align: center; }
+  #b_avvia.ferma { background: transparent; color: var(--txt); border: 1px solid var(--linea); }
+  .secondario { height: 52px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--linea); color: var(--txt);
+                font-size: 15px; display: grid; place-items: center; white-space: nowrap; }
   #video { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 </style>
 </head>
 <body>
 <main>
-  <header>
-    <h1>Verifica kit</h1>
-    <span class="sub">YOLO26n · nel browser</span>
-  </header>
-
-  <div id="esito"><div class="icona">•</div><div><div class="titolo">Caricamento…</div>
-    <div class="msg">Preparazione del modello</div></div></div>
+  <header><h1>Verifica kit</h1><span class="sub">YOLO26n · nel telefono</span></header>
 
   <div class="vista">
     <canvas id="tela"></canvas>
@@ -76,22 +76,47 @@
       Il kit è completo con almeno una moneta, chiavi, una pila e un accendino.</div></div>
   </div>
 
+  <div class="centro"><div class="anello">
+    <svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">
+      <circle cx="100" cy="100" r="80" fill="none" stroke="#1b2340" stroke-width="14"></circle>
+      <circle id="seg0" cx="100" cy="100" r="80" fill="none" stroke-width="14" stroke-linecap="round"></circle>
+      <circle id="seg1" cx="100" cy="100" r="80" fill="none" stroke-width="14" stroke-linecap="round"></circle>
+      <circle id="seg2" cx="100" cy="100" r="80" fill="none" stroke-width="14" stroke-linecap="round"></circle>
+      <circle id="seg3" cx="100" cy="100" r="80" fill="none" stroke-width="14" stroke-linecap="round"></circle>
+    </svg>
+    <div class="testo" role="status" aria-live="polite"><div id="numero">–<span>/4</span></div><div id="messaggio">Caricamento…</div></div>
+  </div></div>
+
   <div id="chips"></div>
 
+  <div id="dati">
+    <div><small>MODELLO</small><b id="d_modello">v2b</b></div>
+    <div><small>BACKEND</small><b id="d_backend">–</b></div>
+    <div><small>SOGLIA</small><b id="d_soglia">–</b></div>
+    <div><small>TEMPO</small><b id="d_tempo">–</b></div>
+    <div><small>FPS</small><b id="d_fps">–</b></div>
+    <div><small>RILEVATI</small><b id="d_tot">–</b></div>
+  </div>
+
   <div class="comandi">
-    <button id="b_avvia" disabled>Avvia fotocamera</button>
+    <button id="b_avvia" disabled>Avvia</button>
     <label class="secondario">Carica foto <input type="file" id="file" accept="image/*" hidden></label>
   </div>
-  <footer id="info">&nbsp;</footer>
 </main>
 <video id="video" playsinline muted></video>
 
 <script>
 // --- Configurazione -------------------------------------------------------------
+const MODELLO = 'v2b';
 const CLASSI = ['moneta_10c', 'altra_moneta', 'chiavi', 'pila_AAA', 'accendino'];
 const TIPO_DI_CLASSE = [0, 0, 1, 2, 3];           // le due classi di monete contano come "moneta"
-const TIPI = [ { nome: 'moneta', e: '🪙', col: '#fbbf24' }, { nome: 'chiavi', e: '🔑', col: '#60a5fa' },
-               { nome: 'pila', e: '🔋', col: '#f472b6' }, { nome: 'accendino', e: '🔥', col: '#fb923c' } ];
+const ICONE = {
+  moneta: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/>',
+  chiavi: '<circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21M17 12v3M20 12v2"/>',
+  pila: '<rect x="3" y="8" width="15" height="8" rx="2"/><path d="M20 11v2M7 12h4"/>',
+  accendino: '<rect x="7" y="9" width="10" height="12" rx="2"/><path d="M12 2c1.6 1.8 2 3.3 0 5.2C10 5.3 10.4 3.8 12 2z"/>' };
+const TIPI = [ { nome: 'moneta', col: '#fbbf24' }, { nome: 'chiavi', col: '#60a5fa' },
+               { nome: 'pila', col: '#f472b6' }, { nome: 'accendino', col: '#fb923c' } ];
 const LATO = 640, RAPPORTO = 2994 / 2400, STABILE_MS = 500;
 const par = new URLSearchParams(location.search);
 const SOGLIA = parseFloat(par.get('soglia') || '0.5');   // ?soglia=0.6 per cambiarla
@@ -101,12 +126,23 @@ let sessione, backend, attivo = false, rilevamenti = [], ritaglio = null, firma 
 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/';
 if (!self.crossOriginIsolated) ort.env.wasm.numThreads = 1;
 
-$('chips').innerHTML = TIPI.map((t, i) =>
-  `<div class="chip" id="chip${i}"><div class="e">${t.e}</div><div class="n">${t.nome}</div></div>`).join('');
+// Anello: 4 segmenti, uno per tipo di oggetto
+const C = 2 * Math.PI * 80, GAP = 26, SEG = C / 4 - GAP;
+for (let i = 0; i < 4; i++) {
+  const s = $('seg' + i);
+  s.setAttribute('stroke-dasharray', `${SEG} ${C - SEG}`);
+  s.setAttribute('transform', `rotate(${-90 + (GAP / 2) / C * 360 + i * 90} 100 100)`);
+  s.setAttribute('stroke', '#2a3357');
+}
+$('chips').innerHTML = TIPI.map((t, i) => `<div class="chip" id="chip${i}"><div class="tondo">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONE[t.nome]}</svg>
+  <span class="conta" id="conta${i}">0</span></div><div class="nome">${t.nome}</div></div>`).join('');
+$('d_soglia').textContent = SOGLIA.toFixed(2);
 
-function esito(stato, icona, titolo, msg) {
-  const e = $('esito'); e.className = stato;
-  e.innerHTML = `<div class="icona">${icona}</div><div><div class="titolo">${titolo}</div><div class="msg">${msg}</div></div>`;
+function stato(classe, numero, messaggio) {
+  document.body.className = classe;
+  $('numero').innerHTML = `${numero}<span>/4</span>`;
+  $('messaggio').textContent = messaggio;
 }
 
 // --- Modello ----------------------------------------------------------------------
@@ -116,10 +152,10 @@ async function caricaModello() {
     try { sessione = await ort.InferenceSession.create('best.onnx', { executionProviders: [ep] }); backend = ep; break; }
     catch (e) { console.warn('Backend non disponibile:', ep, e); }
   }
-  if (!sessione) { esito('ko', '!', 'Errore', 'Modello non caricato'); return; }
+  if (!sessione) { stato('ko', '!', 'Modello non caricato'); return; }
   await inferenza(new Float32Array(3 * LATO * LATO).fill(114 / 255));   // riscaldamento
-  esito('', '•', 'Pronto', 'Avvia la fotocamera e inquadra la busta');
-  $('info').textContent = `${backend} · soglia ${SOGLIA}`;
+  $('d_backend').textContent = backend === 'webgpu' ? 'WebGPU' : 'WASM';
+  stato('', '–', 'Pronto');
   $('b_avvia').disabled = false;
 }
 
@@ -192,14 +228,21 @@ async function rileva(sorgente, rq) {
 
 // --- Esito: almeno un oggetto per tipo ---------------------------------------------
 function valuta(dalVivo) {
-  const presenti = TIPI.map((_, i) => rilevamenti.some(d => d.tipo === i));
-  presenti.forEach((p, i) => $('chip' + i).className = 'chip ' + (p ? 'si' : 'no'));
+  const conteggi = TIPI.map((_, i) => rilevamenti.filter(d => d.tipo === i).length);
+  const presenti = conteggi.map(n => n > 0);
+  presenti.forEach((p, i) => {
+    $('chip' + i).className = 'chip ' + (p ? 'si' : 'no');
+    $('conta' + i).textContent = conteggi[i];
+    $('seg' + i).setAttribute('stroke', p ? '#34d399' : '#f05252');
+  });
+  const n = presenti.filter(Boolean).length;
+  $('d_tot').textContent = rilevamenti.length;
   const sig = presenti.join(), ora = performance.now();
   if (sig !== firma) { firma = sig; dal = ora; }
-  if (dalVivo && ora - dal < STABILE_MS) { esito('attesa', '…', 'In verifica', 'Tieni fermo il telefono'); return; }
+  if (dalVivo && ora - dal < STABILE_MS) { stato('attesa', n, 'In verifica…'); return; }
   const mancanti = TIPI.filter((_, i) => !presenti[i]).map(t => t.nome);
-  if (!mancanti.length) esito('ok', '✓', 'Kit completo', 'Tutti e 4 gli oggetti presenti');
-  else esito('ko', '✕', 'Kit incompleto', 'Manca: ' + mancanti.join(', '));
+  if (!mancanti.length) stato('ok', n, 'Kit completo');
+  else stato('ko', n, mancanti.length === 1 ? `Manca: ${mancanti[0]}` : `Mancano: ${mancanti.join(', ')}`);
 }
 
 // --- Disegno -----------------------------------------------------------------------
@@ -210,15 +253,15 @@ function disegna(sorgente) {
   const g = t.getContext('2d');
   g.drawImage(sorgente, rq.sx, rq.sy, rq.sw, rq.sh, 0, 0, W, H);
   const s = W / 600;
-  g.lineWidth = 3 * s; g.font = `600 ${13 * s}px -apple-system, system-ui, sans-serif`;
+  g.lineWidth = 2.5 * s; g.font = `600 ${13 * s}px "Space Grotesk", system-ui, sans-serif`;
   for (const d of rilevamenti) {
-    const t = TIPI[d.tipo], x = d.x1 * k, y = d.y1 * k, w = (d.x2 - d.x1) * k, h = (d.y2 - d.y1) * k;
-    g.strokeStyle = g.fillStyle = t.col;
-    g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, 6 * s) : g.rect(x, y, w, h); g.stroke();
-    const testo = `${t.nome} ${Math.round(d.conf * 100)}%`, tw = g.measureText(testo).width + 10 * s, th = 19 * s;
-    const ty = y - th - 2 * s < 0 ? y + 2 * s : y - th - 2 * s;
-    g.beginPath(); g.roundRect ? g.roundRect(x, ty, tw, th, 5 * s) : g.rect(x, ty, tw, th); g.fill();
-    g.fillStyle = '#0e1014'; g.fillText(testo, x + 5 * s, ty + 14 * s);
+    const x = d.x1 * k, y = d.y1 * k, w = (d.x2 - d.x1) * k, h = (d.y2 - d.y1) * k;
+    g.strokeStyle = g.fillStyle = '#ffffff';
+    g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, 8 * s) : g.rect(x, y, w, h); g.stroke();
+    const testo = `${TIPI[d.tipo].nome} ${d.conf.toFixed(2)}`, tw = g.measureText(testo).width + 12 * s, th = 20 * s;
+    const ty = y - th - 3 * s < 0 ? y + 3 * s : y - th - 3 * s;
+    g.beginPath(); g.roundRect ? g.roundRect(x, ty, tw, th, 10 * s) : g.rect(x, ty, tw, th); g.fill();
+    g.fillStyle = '#0b1020'; g.fillText(testo, x + 6 * s, ty + 14.5 * s);
   }
 }
 
@@ -229,16 +272,20 @@ function anteprima() {                              // ~60 fps: video + ultimi r
   requestAnimationFrame(anteprima);
 }
 
+function mostraTempo(ms, fps) {
+  $('d_tempo').textContent = `${Math.round(ms)} ms`;
+  $('d_fps').textContent = fps ? fps.toFixed(1) : 'foto';
+}
+
 async function ciclo() {                            // inferenza continua, un fotogramma dopo l'altro
   const v = $('video');
   while (attivo) {
     if (!v.videoWidth) { await new Promise(r => setTimeout(r, 50)); continue; }
     const t0 = performance.now();
     rilevamenti = await rileva(v, riquadro(v.videoWidth, v.videoHeight));
-    const ms = performance.now() - t0;
-    tempi = [...tempi.slice(-9), ms];
+    tempi = [...tempi.slice(-9), performance.now() - t0];
     const medio = tempi.reduce((a, b) => a + b) / tempi.length;
-    $('info').textContent = `${(1000 / medio).toFixed(1)} fps · ${Math.round(medio)} ms · ${backend} · soglia ${SOGLIA}`;
+    mostraTempo(medio, 1000 / medio);
     if (attivo) valuta(true);
     await new Promise(r => setTimeout(r, 0));     // lascia spazio all'anteprima e ai tocchi
   }
@@ -251,18 +298,18 @@ async function avvia() {
     v.srcObject = await navigator.mediaDevices.getUserMedia({ audio: false,
       video: { facingMode: 'environment', width: { ideal: 4032 }, height: { ideal: 3024 } } });
     await v.play();
-    attivo = true; firma = ''; $('vuoto').style.display = 'none';
+    attivo = true; firma = ''; tempi = []; $('vuoto').style.display = 'none';
     $('b_avvia').textContent = 'Ferma'; $('b_avvia').classList.add('ferma');
     try { blocco = await navigator.wakeLock?.request('screen'); } catch (e) {}   // schermo sempre acceso
     anteprima(); ciclo();
-  } catch (e) { esito('ko', '!', 'Fotocamera non disponibile', e.message); }
+  } catch (e) { stato('ko', '!', 'Fotocamera non disponibile'); console.warn(e); }
 }
 
 function ferma() {
   attivo = false;
   const v = $('video'); v.srcObject?.getTracks().forEach(t => t.stop()); v.srcObject = null;
   blocco?.release(); blocco = null;
-  $('b_avvia').textContent = 'Avvia fotocamera'; $('b_avvia').classList.remove('ferma');
+  $('b_avvia').textContent = 'Avvia'; $('b_avvia').classList.remove('ferma');
 }
 
 $('b_avvia').onclick = () => attivo ? ferma() : avvia();
@@ -274,7 +321,7 @@ $('file').onchange = async ev => {                  // foto: stesso ritaglio cen
   ritaglio = riquadro(img.width, img.height);
   const t0 = performance.now();
   rilevamenti = await rileva(img, ritaglio);
-  $('info').textContent = `foto · ${Math.round(performance.now() - t0)} ms · ${backend} · soglia ${SOGLIA}`;
+  mostraTempo(performance.now() - t0);
   $('vuoto').style.display = 'none'; disegna(img); firma = ''; valuta(false);
   ev.target.value = '';
 };
