@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verifica kit</title>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort.webgpu.min.js"></script>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 12px; max-width: 900px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  #stato { font-size: 13px; color: #555; margin-bottom: 8px; }
+  .riga { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+  button, label.bottone { font-size: 16px; padding: 10px 14px; border: 1px solid #888; border-radius: 8px; background: #f2f2f2; }
+  input[type=number] { width: 52px; font-size: 16px; }
+  #vista { position: relative; display: none; }
+  #video { width: 100%; display: block; }
+  #guida { position: absolute; border: 3px solid #00c853; box-sizing: border-box; pointer-events: none; }
+  #tela { width: 100%; display: block; margin-top: 8px; }
+  #esito { font-size: 34px; font-weight: bold; padding: 8px 14px; border-radius: 8px; display: none; }
+  .ok { background: #c8f7c5; color: #105c10; }
+  .ko { background: #ffd0cc; color: #8a1006; }
+  table { border-collapse: collapse; font-size: 14px; }
+  td, th { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
+</style>
+</head>
+<body>
+<h1>Verifica kit</h1>
+<div id="stato">Caricamento del modello…</div>
+
+<div class="riga">
+  Kit atteso: monete <input type="number" id="a_monete" value="3" min="0">
+  pile <input type="number" id="a_pile" value="1" min="0">
+  accendini <input type="number" id="a_accendini" value="1" min="0">
+  <label><input type="checkbox" id="a_chiavi" checked> chiavi</label>
+</div>
+<div class="riga">
+  Soglia <input type="number" id="soglia" value="0.5" min="0.25" max="0.95" step="0.05">
+</div>
+<div class="riga">
+  <button id="b_camera">Avvia fotocamera</button>
+  <button id="b_scatta" disabled>Scatta e verifica</button>
+  <label class="bottone">Carica foto <input type="file" id="file" accept="image/*" hidden></label>
+</div>
+
+<div id="vista"><video id="video" playsinline muted></video><div id="guida"></div></div>
+<div id="esito"></div>
+<div id="dettagli"></div>
+<canvas id="tela"></canvas>
+
+<script>
+const CLASSI = ['moneta_10c', 'altra_moneta', 'chiavi', 'pila_AAA', 'accendino'];
+const COLORI = ['#ff9800', '#9e9e9e', '#2196f3', '#e91e63', '#4caf50'];
+const LATO = 640;
+const RAPPORTO = 2994 / 2400;              // larghezza/altezza del ritaglio usato in addestramento
+const $ = id => document.getElementById(id);
+let sessione, backend;
+
+ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/';
+if (!self.crossOriginIsolated) ort.env.wasm.numThreads = 1;
+
+async function caricaModello() {
+  const forza = new URLSearchParams(location.search).get('ep');      // ?ep=wasm per forzare la CPU
+  const tentativi = forza ? [forza] : (navigator.gpu ? ['webgpu', 'wasm'] : ['wasm']);
+  for (const ep of tentativi) {
+    try {
+      sessione = await ort.InferenceSession.create('best.onnx', { executionProviders: [ep] });
+      backend = ep; break;
+    } catch (e) { console.warn('Backend non disponibile:', ep, e); }
+  }
+  if (!sessione) { $('stato').textContent = 'Errore: modello non caricato (vedi console).'; return; }
+  await inferenza(new Float32Array(3 * LATO * LATO).fill(114 / 255));   // riscaldamento
+  $('stato').textContent = `Modello pronto · backend: ${backend}`;
+}
+
+// Ridimensionamento identico a cv2.resize INTER_LINEAR (aritmetica intera di OpenCV),
+// lo stesso usato da Ultralytics in addestramento e in predict
+function ridimensiona(src, W, H, nw, nh) {
+  const tab = (n, N) => {
+    const i0 = new Int32Array(n), i1 = new Int32Array(n), c = new Int32Array(n), s = N / n;
+    for (let d = 0; d < n; d++) {
+      let f = (d + 0.5) * s - 0.5, k = Math.floor(f); f -= k;
+      if (k < 0) { k = 0; f = 0; }
+      if (k >= N - 1) { k = N - 1; f = 0; }
+      i0[d] = k; i1[d] = Math.min(k + 1, N - 1); c[d] = Math.round((1 - f) * 2048);
+    }
+    return { i0, i1, c };
+  };
+  const X = tab(nw, W), Y = tab(nh, H), out = new Uint8Array(nw * nh * 3);
+  for (let y = 0; y < nh; y++) {
+    const b0 = Y.c[y], b1 = 2048 - b0, r0 = Y.i0[y] * W, r1 = Y.i1[y] * W;
+    for (let x = 0; x < nw; x++) {
+      const a0 = X.c[x], a1 = 2048 - a0;
+      const p00 = (r0 + X.i0[x]) * 4, p01 = (r0 + X.i1[x]) * 4, p10 = (r1 + X.i0[x]) * 4, p11 = (r1 + X.i1[x]) * 4;
+      for (let ch = 0; ch < 3; ch++) {
+        const s0 = src[p00 + ch] * a0 + src[p01 + ch] * a1, s1 = src[p10 + ch] * a0 + src[p11 + ch] * a1;
+        out[(y * nw + x) * 3 + ch] = ((((b0 * (s0 >> 4)) >> 16) + ((b1 * (s1 >> 4)) >> 16) + 2) >> 2);
+      }
+    }
+  }
+  return out;
+}
+
+// Letterbox come Ultralytics: lato lungo a 640, bordo grigio 114 centrato
+function preparaImmagine(sorgente, sx, sy, sw, sh) {
+  const c = new OffscreenCanvas(sw, sh), g = c.getContext('2d');
+  g.drawImage(sorgente, sx, sy, sw, sh, 0, 0, sw, sh);          // solo ritaglio, nessun ridimensionamento
+  const src = g.getImageData(0, 0, sw, sh).data;
+  const r = LATO / Math.max(sw, sh);
+  const nw = Math.round(sw * r), nh = Math.round(sh * r);
+  const left = Math.floor((LATO - nw) / 2), top = Math.floor((LATO - nh) / 2);
+  const img = ridimensiona(src, sw, sh, nw, nh), n = LATO * LATO;
+  const dati = new Float32Array(3 * n).fill(114 / 255);
+  for (let y = 0; y < nh; y++) for (let x = 0; x < nw; x++) {   // RGB (HWC) -> CHW, valori 0-1
+    const p = (y * nw + x) * 3, q = (y + top) * LATO + x + left;
+    dati[q] = img[p] / 255; dati[n + q] = img[p + 1] / 255; dati[2 * n + q] = img[p + 2] / 255;
+  }
+  return { dati, r, left, top };
+}
+
+async function inferenza(dati) {
+  const out = await sessione.run({ [sessione.inputNames[0]]: new ort.Tensor('float32', dati, [1, 3, LATO, LATO]) });
+  return out[sessione.outputNames[0]].data;      // 300 righe x [x1, y1, x2, y2, conf, classe]
+}
+
+async function verifica(sorgente, sx, sy, sw, sh) {
+  [sx, sy, sw, sh] = [sx, sy, sw, sh].map(Math.round);
+  const t0 = performance.now();
+  const { dati, r, left, top } = preparaImmagine(sorgente, sx, sy, sw, sh);
+  const uscita = await inferenza(dati);
+  const ms = performance.now() - t0;
+  const soglia = parseFloat($('soglia').value);
+  const ril = [];
+  for (let i = 0; i < 300; i++) {
+    const [x1, y1, x2, y2, conf, cls] = uscita.slice(6 * i, 6 * i + 6);
+    if (conf >= soglia) ril.push({ cls: Math.round(cls), conf,       // coordinate nel ritaglio
+      x1: (x1 - left) / r, y1: (y1 - top) / r, x2: (x2 - left) / r, y2: (y2 - top) / r });
+  }
+  window.ultimo = ril;                            // per il controllo dalla console
+  disegna(sorgente, sx, sy, sw, sh, ril);
+  mostraEsito(ril, ms);
+}
+
+function disegna(sorgente, sx, sy, sw, sh, ril) {
+  const t = $('tela'); t.width = sw; t.height = sh;
+  const g = t.getContext('2d'); g.drawImage(sorgente, sx, sy, sw, sh, 0, 0, sw, sh);
+  const s = Math.max(2, sw / 300);
+  g.lineWidth = s; g.font = `${6 * s}px sans-serif`;
+  for (const d of ril) {
+    g.strokeStyle = g.fillStyle = COLORI[d.cls];
+    g.strokeRect(d.x1, d.y1, d.x2 - d.x1, d.y2 - d.y1);
+    g.fillText(`${CLASSI[d.cls]} ${d.conf.toFixed(2)}`, d.x1, Math.max(6 * s, d.y1 - s));
+  }
+}
+
+function mostraEsito(ril, ms) {
+  const n = Object.fromEntries(CLASSI.map(c => [c, 0]));
+  ril.forEach(d => n[CLASSI[d.cls]]++);
+  const visto = { monete: n.moneta_10c + n.altra_moneta, pile: n.pila_AAA, accendini: n.accendino };
+  const mancanti = [], extra = [];
+  for (const k of ['monete', 'pile', 'accendini']) {
+    const diff = visto[k] - parseInt($('a_' + k).value);
+    if (diff < 0) mancanti.push(`${-diff} ${k}`);
+    if (diff > 0) extra.push(`${diff} ${k}`);
+  }
+  if ($('a_chiavi').checked && n.chiavi === 0) mancanti.push('chiavi');
+  const ok = !mancanti.length && !extra.length;
+  const e = $('esito'); e.style.display = 'inline-block';
+  e.className = ok ? 'ok' : 'ko';
+  e.textContent = ok ? 'OK' : 'KO';
+  const conf = c => ril.filter(d => CLASSI[d.cls] === c).map(d => d.conf.toFixed(2)).join(', ');
+  $('dettagli').innerHTML =
+    (mancanti.length ? `<p>Mancanti: ${mancanti.join(', ')}</p>` : '') +
+    (extra.length ? `<p>In più: ${extra.join(', ')}</p>` : '') +
+    '<table><tr><th>Classe</th><th>N</th><th>Confidenze</th></tr>' +
+    CLASSI.map(c => `<tr><td>${c}</td><td>${n[c]}</td><td>${conf(c)}</td></tr>`).join('') +
+    `</table><p style="font-size:13px;color:#555">${ms.toFixed(0)} ms · ${backend} · soglia ${$('soglia').value}</p>`;
+}
+
+// Fotocamera: il riquadro verde ha le proporzioni del ritaglio di addestramento
+function riquadroGuida(w, h) {
+  let rw = w, rh = w / RAPPORTO;
+  if (rh > h) { rh = h; rw = h * RAPPORTO; }
+  return { sx: (w - rw) / 2, sy: (h - rh) / 2, sw: rw, sh: rh };
+}
+
+$('b_camera').onclick = async () => {
+  try {
+    const v = $('video');
+    v.srcObject = await navigator.mediaDevices.getUserMedia({ audio: false,
+      video: { facingMode: 'environment', width: { ideal: 4032 }, height: { ideal: 3024 } } });
+    await v.play();
+    $('vista').style.display = 'block';
+    const aggiorna = () => {
+      const { sx, sy, sw, sh } = riquadroGuida(v.videoWidth, v.videoHeight), q = $('guida').style;
+      q.left = 100 * sx / v.videoWidth + '%'; q.top = 100 * sy / v.videoHeight + '%';
+      q.width = 100 * sw / v.videoWidth + '%'; q.height = 100 * sh / v.videoHeight + '%';
+      $('stato').textContent = `Modello pronto · backend: ${backend} · fotocamera ${v.videoWidth}×${v.videoHeight}`;
+    };
+    v.onresize = aggiorna; aggiorna();
+    $('b_scatta').disabled = false;
+  } catch (e) { $('stato').textContent = 'Fotocamera non disponibile: ' + e.message; }
+};
+
+$('b_scatta').onclick = async () => {
+  const v = $('video'), { sx, sy, sw, sh } = riquadroGuida(v.videoWidth, v.videoHeight);
+  const fotogramma = await createImageBitmap(v);  // fissa il fotogramma prima dell'inferenza
+  await verifica(fotogramma, sx, sy, sw, sh);
+};
+
+// Foto caricata: usata intera, si assume già ritagliata come quelle di addestramento
+$('file').onchange = async ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  const img = await createImageBitmap(f, { colorSpaceConversion: 'none' });  // come cv2: profilo colore ignorato
+  await verifica(img, 0, 0, img.width, img.height);
+  ev.target.value = '';
+};
+
+caricaModello();
+</script>
+</body>
+</html>
