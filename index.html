@@ -99,7 +99,7 @@
   </div>
 
   <div class="comandi">
-    <button id="b_avvia" disabled>Avvia</button>
+    <button id="b_avvia" disabled>Caricamento…</button>
     <label class="secondario">Carica foto <input type="file" id="file" accept="image/*" hidden></label>
   </div>
 </main>
@@ -146,16 +146,49 @@ function stato(classe, numero, messaggio) {
 }
 
 // --- Modello ----------------------------------------------------------------------
+// Avanzamento del caricamento: percentuale al centro, i 4 segmenti si accendono a quarti
+function caricamento(messaggio, frazione) {
+  document.body.className = '';
+  $('numero').textContent = frazione == null ? '…' : `${Math.min(99, Math.round(frazione * 100))}%`;
+  $('messaggio').textContent = messaggio;
+  for (let i = 0; i < 4; i++)
+    $('seg' + i).setAttribute('stroke', frazione != null && frazione >= (i + 1) / 4 ? '#f2f4fa' : '#2a3357');
+  $('b_avvia').textContent = messaggio;
+}
+
+async function scaricaModello() {                   // download con avanzamento (9,4 MB)
+  const r = await fetch('best.onnx');
+  if (!r.ok) throw new Error(`best.onnx non trovato (${r.status})`);
+  const tot = +r.headers.get('content-length') || 0, lettore = r.body.getReader(), parti = [];
+  let letti = 0;
+  for (;;) {
+    const { done, value } = await lettore.read();
+    if (done) break;
+    parti.push(value); letti += value.length;
+    caricamento('Scarico il modello', tot && letti <= tot ? letti / tot : null);
+  }
+  const buf = new Uint8Array(letti); let o = 0;
+  for (const p of parti) { buf.set(p, o); o += p.length; }
+  return buf;
+}
+
 async function caricaModello() {
+  let modello;
+  try { caricamento('Scarico il modello', 0); modello = await scaricaModello(); }
+  catch (e) { stato('ko', '!', 'Modello non trovato'); $('b_avvia').textContent = 'Errore'; console.warn(e); return; }
   const forza = par.get('ep');                      // ?ep=wasm per forzare la CPU
   for (const ep of forza ? [forza] : (navigator.gpu ? ['webgpu', 'wasm'] : ['wasm'])) {
-    try { sessione = await ort.InferenceSession.create('best.onnx', { executionProviders: [ep] }); backend = ep; break; }
+    caricamento(ep === 'webgpu' ? 'Preparo la GPU' : 'Preparo il processore', 0.75);
+    try { sessione = await ort.InferenceSession.create(modello, { executionProviders: [ep] }); backend = ep; break; }
     catch (e) { console.warn('Backend non disponibile:', ep, e); }
   }
-  if (!sessione) { stato('ko', '!', 'Modello non caricato'); return; }
+  if (!sessione) { stato('ko', '!', 'Modello non caricato'); $('b_avvia').textContent = 'Errore'; return; }
+  caricamento('Primo avvio del modello', 0.9);
   await inferenza(new Float32Array(3 * LATO * LATO).fill(114 / 255));   // riscaldamento
   $('d_backend').textContent = backend === 'webgpu' ? 'WebGPU' : 'WASM';
+  for (let i = 0; i < 4; i++) $('seg' + i).setAttribute('stroke', '#2a3357');
   stato('', '–', 'Pronto');
+  $('b_avvia').textContent = 'Avvia';
   $('b_avvia').disabled = false;
 }
 
