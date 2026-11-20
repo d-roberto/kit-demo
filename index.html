@@ -2,78 +2,133 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1014">
 <title>Verifica kit</title>
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort.webgpu.min.js"></script>
 <style>
-  body { font-family: -apple-system, system-ui, sans-serif; margin: 0; padding: 12px; max-width: 900px; }
-  h1 { font-size: 20px; margin: 0 0 8px; }
-  #stato { font-size: 13px; color: #555; margin-bottom: 8px; }
-  .riga { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
-  button, label.bottone { font-size: 16px; padding: 10px 14px; border: 1px solid #888; border-radius: 8px; background: #f2f2f2; }
-  input[type=number] { width: 52px; font-size: 16px; }
-  #vista { position: relative; display: none; }
-  #video { width: 100%; display: block; }
-  #guida { position: absolute; border: 3px solid #00c853; box-sizing: border-box; pointer-events: none; }
-  #tela { width: 100%; display: block; margin-top: 8px; }
-  #esito { font-size: 34px; font-weight: bold; padding: 8px 14px; border-radius: 8px; display: none; }
-  .ok { background: #c8f7c5; color: #105c10; }
-  .ko { background: #ffd0cc; color: #8a1006; }
-  table { border-collapse: collapse; font-size: 14px; }
-  td, th { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
+  :root { --bg:#0e1014; --card:#171a21; --bordo:#262a33; --txt:#eceef3; --mute:#8b91a1;
+          --ok:#22c55e; --ko:#ef4444; --attesa:#f59e0b; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--txt);
+         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 720px; margin: 0 auto;
+         padding: max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); }
+  header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.02em; }
+  .sub { font-size: 12px; color: var(--mute); }
+
+  #esito { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 20px;
+           background: var(--card); border: 1px solid var(--bordo); transition: background .25s, border-color .25s; }
+  #esito .icona { flex: none; width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center;
+                  font-size: 28px; font-weight: 800; background: var(--bordo); transition: background .25s; }
+  #esito .titolo { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+  #esito .msg { font-size: 15px; color: var(--mute); margin-top: 2px; }
+  #esito.ok { background: rgba(34,197,94,.14); border-color: rgba(34,197,94,.45); }
+  #esito.ok .icona { background: var(--ok); color: #052e14; }
+  #esito.ko { background: rgba(239,68,68,.14); border-color: rgba(239,68,68,.45); }
+  #esito.ko .icona { background: var(--ko); color: #3b0606; }
+  #esito.attesa { background: rgba(245,158,11,.10); border-color: rgba(245,158,11,.35); }
+  #esito.attesa .icona { background: var(--attesa); color: #3a2402; animation: pulsa 1s infinite; }
+  @keyframes pulsa { 50% { opacity: .45; } }
+
+  .vista { position: relative; margin: 14px 0; border-radius: 20px; overflow: hidden; background: #000;
+           aspect-ratio: 2994 / 2400; border: 1px solid var(--bordo); }
+  #tela { width: 100%; height: 100%; display: block; }
+  #vuoto { position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+           color: var(--mute); padding: 24px; font-size: 15px; line-height: 1.4; }
+  #vuoto b { color: var(--txt); display: block; font-size: 17px; margin-bottom: 4px; }
+
+  #chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .chip { background: var(--card); border: 2px solid var(--bordo); border-radius: 16px; padding: 10px 4px 9px;
+          text-align: center; transition: border-color .2s, opacity .2s, transform .2s; }
+  .chip .e { font-size: 26px; line-height: 1; }
+  .chip .n { font-size: 12px; margin-top: 6px; color: var(--mute); font-weight: 600; }
+  .chip.si { border-color: var(--ok); }
+  .chip.si .n { color: var(--ok); }
+  .chip.no { border-color: var(--ko); opacity: .8; }
+  .chip.no .n { color: var(--ko); }
+
+  .comandi { display: flex; gap: 10px; margin-top: 16px; }
+  #b_avvia { flex: 1; font: inherit; font-size: 17px; font-weight: 700; padding: 15px; border: 0;
+             border-radius: 16px; background: var(--txt); color: #0e1014; }
+  #b_avvia:disabled { opacity: .4; }
+  #b_avvia.ferma { background: var(--card); color: var(--txt); border: 1px solid var(--bordo); }
+  .secondario { font-size: 15px; padding: 15px 16px; border-radius: 16px; background: var(--card);
+                border: 1px solid var(--bordo); color: var(--txt); white-space: nowrap; }
+  footer { margin-top: 14px; font-size: 12px; color: var(--mute); text-align: center; }
+  #video { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 </style>
 </head>
 <body>
-<h1>Verifica kit</h1>
-<div id="stato">Caricamento del modello…</div>
+<main>
+  <header>
+    <h1>Verifica kit</h1>
+    <span class="sub">YOLO26n · nel browser</span>
+  </header>
 
-<div class="riga">
-  Kit atteso: monete <input type="number" id="a_monete" value="3" min="0">
-  pile <input type="number" id="a_pile" value="1" min="0">
-  accendini <input type="number" id="a_accendini" value="1" min="0">
-  <label><input type="checkbox" id="a_chiavi" checked> chiavi</label>
-</div>
-<div class="riga">
-  Soglia <input type="number" id="soglia" value="0.5" min="0.25" max="0.95" step="0.05">
-</div>
-<div class="riga">
-  <button id="b_camera">Avvia fotocamera</button>
-  <button id="b_scatta" disabled>Scatta e verifica</button>
-  <label class="bottone">Carica foto <input type="file" id="file" accept="image/*" hidden></label>
-</div>
+  <div id="esito"><div class="icona">•</div><div><div class="titolo">Caricamento…</div>
+    <div class="msg">Preparazione del modello</div></div></div>
 
-<div id="vista"><video id="video" playsinline muted></video><div id="guida"></div></div>
-<div id="esito"></div>
-<div id="dettagli"></div>
-<canvas id="tela"></canvas>
+  <div class="vista">
+    <canvas id="tela"></canvas>
+    <div id="vuoto"><div><b>Inquadra la busta</b>La busta deve riempire questo riquadro.<br>
+      Il kit è completo con almeno una moneta, chiavi, una pila e un accendino.</div></div>
+  </div>
+
+  <div id="chips"></div>
+
+  <div class="comandi">
+    <button id="b_avvia" disabled>Avvia fotocamera</button>
+    <label class="secondario">Carica foto <input type="file" id="file" accept="image/*" hidden></label>
+  </div>
+  <footer id="info">&nbsp;</footer>
+</main>
+<video id="video" playsinline muted></video>
 
 <script>
+// --- Configurazione -------------------------------------------------------------
 const CLASSI = ['moneta_10c', 'altra_moneta', 'chiavi', 'pila_AAA', 'accendino'];
-const COLORI = ['#ff9800', '#9e9e9e', '#2196f3', '#e91e63', '#4caf50'];
-const LATO = 640;
-const RAPPORTO = 2994 / 2400;              // larghezza/altezza del ritaglio usato in addestramento
+const TIPO_DI_CLASSE = [0, 0, 1, 2, 3];           // le due classi di monete contano come "moneta"
+const TIPI = [ { nome: 'moneta', e: '🪙', col: '#fbbf24' }, { nome: 'chiavi', e: '🔑', col: '#60a5fa' },
+               { nome: 'pila', e: '🔋', col: '#f472b6' }, { nome: 'accendino', e: '🔥', col: '#fb923c' } ];
+const LATO = 640, RAPPORTO = 2994 / 2400, STABILE_MS = 500;
+const par = new URLSearchParams(location.search);
+const SOGLIA = parseFloat(par.get('soglia') || '0.5');   // ?soglia=0.6 per cambiarla
 const $ = id => document.getElementById(id);
-let sessione, backend;
+let sessione, backend, attivo = false, rilevamenti = [], ritaglio = null, firma = '', dal = 0, tempi = [], blocco = null;
 
 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/';
 if (!self.crossOriginIsolated) ort.env.wasm.numThreads = 1;
 
-async function caricaModello() {
-  const forza = new URLSearchParams(location.search).get('ep');      // ?ep=wasm per forzare la CPU
-  const tentativi = forza ? [forza] : (navigator.gpu ? ['webgpu', 'wasm'] : ['wasm']);
-  for (const ep of tentativi) {
-    try {
-      sessione = await ort.InferenceSession.create('best.onnx', { executionProviders: [ep] });
-      backend = ep; break;
-    } catch (e) { console.warn('Backend non disponibile:', ep, e); }
-  }
-  if (!sessione) { $('stato').textContent = 'Errore: modello non caricato (vedi console).'; return; }
-  await inferenza(new Float32Array(3 * LATO * LATO).fill(114 / 255));   // riscaldamento
-  $('stato').textContent = `Modello pronto · backend: ${backend}`;
+$('chips').innerHTML = TIPI.map((t, i) =>
+  `<div class="chip" id="chip${i}"><div class="e">${t.e}</div><div class="n">${t.nome}</div></div>`).join('');
+
+function esito(stato, icona, titolo, msg) {
+  const e = $('esito'); e.className = stato;
+  e.innerHTML = `<div class="icona">${icona}</div><div><div class="titolo">${titolo}</div><div class="msg">${msg}</div></div>`;
 }
 
-// Ridimensionamento identico a cv2.resize INTER_LINEAR (aritmetica intera di OpenCV),
-// lo stesso usato da Ultralytics in addestramento e in predict
+// --- Modello ----------------------------------------------------------------------
+async function caricaModello() {
+  const forza = par.get('ep');                      // ?ep=wasm per forzare la CPU
+  for (const ep of forza ? [forza] : (navigator.gpu ? ['webgpu', 'wasm'] : ['wasm'])) {
+    try { sessione = await ort.InferenceSession.create('best.onnx', { executionProviders: [ep] }); backend = ep; break; }
+    catch (e) { console.warn('Backend non disponibile:', ep, e); }
+  }
+  if (!sessione) { esito('ko', '!', 'Errore', 'Modello non caricato'); return; }
+  await inferenza(new Float32Array(3 * LATO * LATO).fill(114 / 255));   // riscaldamento
+  esito('', '•', 'Pronto', 'Avvia la fotocamera e inquadra la busta');
+  $('info').textContent = `${backend} · soglia ${SOGLIA}`;
+  $('b_avvia').disabled = false;
+}
+
+async function inferenza(dati) {
+  const out = await sessione.run({ [sessione.inputNames[0]]: new ort.Tensor('float32', dati, [1, 3, LATO, LATO]) });
+  return out[sessione.outputNames[0]].data;          // 300 righe x [x1, y1, x2, y2, conf, classe]
+}
+
+// --- Preparazione dell'immagine, identica a Ultralytics (cv2.resize INTER_LINEAR + letterbox) ---
 function ridimensiona(src, W, H, nw, nh) {
   const tab = (n, N) => {
     const i0 = new Int32Array(n), i1 = new Int32Array(n), c = new Int32Array(n), s = N / n;
@@ -100,118 +155,127 @@ function ridimensiona(src, W, H, nw, nh) {
   return out;
 }
 
-// Letterbox come Ultralytics: lato lungo a 640, bordo grigio 114 centrato
-function preparaImmagine(sorgente, sx, sy, sw, sh) {
-  const c = new OffscreenCanvas(sw, sh), g = c.getContext('2d');
-  g.drawImage(sorgente, sx, sy, sw, sh, 0, 0, sw, sh);          // solo ritaglio, nessun ridimensionamento
+let tmp = null;
+function preparaImmagine(sorgente, { sx, sy, sw, sh }) {
+  if (!tmp || tmp.width !== sw || tmp.height !== sh) tmp = new OffscreenCanvas(sw, sh);
+  const g = tmp.getContext('2d', { willReadFrequently: true });
+  g.drawImage(sorgente, sx, sy, sw, sh, 0, 0, sw, sh);           // solo ritaglio
   const src = g.getImageData(0, 0, sw, sh).data;
-  const r = LATO / Math.max(sw, sh);
-  const nw = Math.round(sw * r), nh = Math.round(sh * r);
+  const r = LATO / Math.max(sw, sh), nw = Math.round(sw * r), nh = Math.round(sh * r);
   const left = Math.floor((LATO - nw) / 2), top = Math.floor((LATO - nh) / 2);
   const img = ridimensiona(src, sw, sh, nw, nh), n = LATO * LATO;
   const dati = new Float32Array(3 * n).fill(114 / 255);
-  for (let y = 0; y < nh; y++) for (let x = 0; x < nw; x++) {   // RGB (HWC) -> CHW, valori 0-1
+  for (let y = 0; y < nh; y++) for (let x = 0; x < nw; x++) {
     const p = (y * nw + x) * 3, q = (y + top) * LATO + x + left;
     dati[q] = img[p] / 255; dati[n + q] = img[p + 1] / 255; dati[2 * n + q] = img[p + 2] / 255;
   }
   return { dati, r, left, top };
 }
 
-async function inferenza(dati) {
-  const out = await sessione.run({ [sessione.inputNames[0]]: new ort.Tensor('float32', dati, [1, 3, LATO, LATO]) });
-  return out[sessione.outputNames[0]].data;      // 300 righe x [x1, y1, x2, y2, conf, classe]
+// Ritaglio: il rettangolo più grande con le proporzioni dell'addestramento, al centro
+function riquadro(w, h) {
+  let sw = w, sh = w / RAPPORTO;
+  if (sh > h) { sh = h; sw = h * RAPPORTO; }
+  return { sx: Math.round((w - sw) / 2), sy: Math.round((h - sh) / 2), sw: Math.round(sw), sh: Math.round(sh) };
 }
 
-async function verifica(sorgente, sx, sy, sw, sh) {
-  [sx, sy, sw, sh] = [sx, sy, sw, sh].map(Math.round);
-  const t0 = performance.now();
-  const { dati, r, left, top } = preparaImmagine(sorgente, sx, sy, sw, sh);
-  const uscita = await inferenza(dati);
-  const ms = performance.now() - t0;
-  const soglia = parseFloat($('soglia').value);
-  const ril = [];
+async function rileva(sorgente, rq) {
+  const { dati, r, left, top } = preparaImmagine(sorgente, rq);
+  const u = await inferenza(dati), ril = [];
   for (let i = 0; i < 300; i++) {
-    const [x1, y1, x2, y2, conf, cls] = uscita.slice(6 * i, 6 * i + 6);
-    if (conf >= soglia) ril.push({ cls: Math.round(cls), conf,       // coordinate nel ritaglio
-      x1: (x1 - left) / r, y1: (y1 - top) / r, x2: (x2 - left) / r, y2: (y2 - top) / r });
+    const [x1, y1, x2, y2, conf, c] = u.slice(6 * i, 6 * i + 6), cls = Math.round(c);
+    if (conf >= SOGLIA && cls < CLASSI.length)
+      ril.push({ tipo: TIPO_DI_CLASSE[cls], conf, x1: (x1 - left) / r, y1: (y1 - top) / r, x2: (x2 - left) / r, y2: (y2 - top) / r });
   }
-  window.ultimo = ril;                            // per il controllo dalla console
-  disegna(sorgente, sx, sy, sw, sh, ril);
-  mostraEsito(ril, ms);
+  return ril;
 }
 
-function disegna(sorgente, sx, sy, sw, sh, ril) {
-  const t = $('tela'); t.width = sw; t.height = sh;
-  const g = t.getContext('2d'); g.drawImage(sorgente, sx, sy, sw, sh, 0, 0, sw, sh);
-  const s = Math.max(2, sw / 300);
-  g.lineWidth = s; g.font = `${6 * s}px sans-serif`;
-  for (const d of ril) {
-    g.strokeStyle = g.fillStyle = COLORI[d.cls];
-    g.strokeRect(d.x1, d.y1, d.x2 - d.x1, d.y2 - d.y1);
-    g.fillText(`${CLASSI[d.cls]} ${d.conf.toFixed(2)}`, d.x1, Math.max(6 * s, d.y1 - s));
+// --- Esito: almeno un oggetto per tipo ---------------------------------------------
+function valuta(dalVivo) {
+  const presenti = TIPI.map((_, i) => rilevamenti.some(d => d.tipo === i));
+  presenti.forEach((p, i) => $('chip' + i).className = 'chip ' + (p ? 'si' : 'no'));
+  const sig = presenti.join(), ora = performance.now();
+  if (sig !== firma) { firma = sig; dal = ora; }
+  if (dalVivo && ora - dal < STABILE_MS) { esito('attesa', '…', 'In verifica', 'Tieni fermo il telefono'); return; }
+  const mancanti = TIPI.filter((_, i) => !presenti[i]).map(t => t.nome);
+  if (!mancanti.length) esito('ok', '✓', 'Kit completo', 'Tutti e 4 gli oggetti presenti');
+  else esito('ko', '✕', 'Kit incompleto', 'Manca: ' + mancanti.join(', '));
+}
+
+// --- Disegno -----------------------------------------------------------------------
+function disegna(sorgente) {
+  const t = $('tela'), rq = ritaglio, k = Math.min(1, 1200 / rq.sw);
+  const W = Math.round(rq.sw * k), H = Math.round(rq.sh * k);
+  if (t.width !== W || t.height !== H) { t.width = W; t.height = H; }
+  const g = t.getContext('2d');
+  g.drawImage(sorgente, rq.sx, rq.sy, rq.sw, rq.sh, 0, 0, W, H);
+  const s = W / 600;
+  g.lineWidth = 3 * s; g.font = `600 ${13 * s}px -apple-system, system-ui, sans-serif`;
+  for (const d of rilevamenti) {
+    const t = TIPI[d.tipo], x = d.x1 * k, y = d.y1 * k, w = (d.x2 - d.x1) * k, h = (d.y2 - d.y1) * k;
+    g.strokeStyle = g.fillStyle = t.col;
+    g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, 6 * s) : g.rect(x, y, w, h); g.stroke();
+    const testo = `${t.nome} ${Math.round(d.conf * 100)}%`, tw = g.measureText(testo).width + 10 * s, th = 19 * s;
+    const ty = y - th - 2 * s < 0 ? y + 2 * s : y - th - 2 * s;
+    g.beginPath(); g.roundRect ? g.roundRect(x, ty, tw, th, 5 * s) : g.rect(x, ty, tw, th); g.fill();
+    g.fillStyle = '#0e1014'; g.fillText(testo, x + 5 * s, ty + 14 * s);
   }
 }
 
-function mostraEsito(ril, ms) {
-  const n = Object.fromEntries(CLASSI.map(c => [c, 0]));
-  ril.forEach(d => n[CLASSI[d.cls]]++);
-  const visto = { monete: n.moneta_10c + n.altra_moneta, pile: n.pila_AAA, accendini: n.accendino };
-  const mancanti = [], extra = [];
-  for (const k of ['monete', 'pile', 'accendini']) {
-    const diff = visto[k] - parseInt($('a_' + k).value);
-    if (diff < 0) mancanti.push(`${-diff} ${k}`);
-    if (diff > 0) extra.push(`${diff} ${k}`);
+function anteprima() {                              // ~60 fps: video + ultimi riquadri
+  if (!attivo) return;
+  const v = $('video');
+  if (v.videoWidth) { ritaglio = riquadro(v.videoWidth, v.videoHeight); disegna(v); }
+  requestAnimationFrame(anteprima);
+}
+
+async function ciclo() {                            // inferenza continua, un fotogramma dopo l'altro
+  const v = $('video');
+  while (attivo) {
+    if (!v.videoWidth) { await new Promise(r => setTimeout(r, 50)); continue; }
+    const t0 = performance.now();
+    rilevamenti = await rileva(v, riquadro(v.videoWidth, v.videoHeight));
+    const ms = performance.now() - t0;
+    tempi = [...tempi.slice(-9), ms];
+    const medio = tempi.reduce((a, b) => a + b) / tempi.length;
+    $('info').textContent = `${(1000 / medio).toFixed(1)} fps · ${Math.round(medio)} ms · ${backend} · soglia ${SOGLIA}`;
+    if (attivo) valuta(true);
+    await new Promise(r => setTimeout(r, 0));     // lascia spazio all'anteprima e ai tocchi
   }
-  if ($('a_chiavi').checked && n.chiavi === 0) mancanti.push('chiavi');
-  const ok = !mancanti.length && !extra.length;
-  const e = $('esito'); e.style.display = 'inline-block';
-  e.className = ok ? 'ok' : 'ko';
-  e.textContent = ok ? 'OK' : 'KO';
-  const conf = c => ril.filter(d => CLASSI[d.cls] === c).map(d => d.conf.toFixed(2)).join(', ');
-  $('dettagli').innerHTML =
-    (mancanti.length ? `<p>Mancanti: ${mancanti.join(', ')}</p>` : '') +
-    (extra.length ? `<p>In più: ${extra.join(', ')}</p>` : '') +
-    '<table><tr><th>Classe</th><th>N</th><th>Confidenze</th></tr>' +
-    CLASSI.map(c => `<tr><td>${c}</td><td>${n[c]}</td><td>${conf(c)}</td></tr>`).join('') +
-    `</table><p style="font-size:13px;color:#555">${ms.toFixed(0)} ms · ${backend} · soglia ${$('soglia').value}</p>`;
 }
 
-// Fotocamera: il riquadro verde ha le proporzioni del ritaglio di addestramento
-function riquadroGuida(w, h) {
-  let rw = w, rh = w / RAPPORTO;
-  if (rh > h) { rh = h; rw = h * RAPPORTO; }
-  return { sx: (w - rw) / 2, sy: (h - rh) / 2, sw: rw, sh: rh };
-}
-
-$('b_camera').onclick = async () => {
+// --- Comandi -----------------------------------------------------------------------
+async function avvia() {
   try {
     const v = $('video');
     v.srcObject = await navigator.mediaDevices.getUserMedia({ audio: false,
       video: { facingMode: 'environment', width: { ideal: 4032 }, height: { ideal: 3024 } } });
     await v.play();
-    $('vista').style.display = 'block';
-    const aggiorna = () => {
-      const { sx, sy, sw, sh } = riquadroGuida(v.videoWidth, v.videoHeight), q = $('guida').style;
-      q.left = 100 * sx / v.videoWidth + '%'; q.top = 100 * sy / v.videoHeight + '%';
-      q.width = 100 * sw / v.videoWidth + '%'; q.height = 100 * sh / v.videoHeight + '%';
-      $('stato').textContent = `Modello pronto · backend: ${backend} · fotocamera ${v.videoWidth}×${v.videoHeight}`;
-    };
-    v.onresize = aggiorna; aggiorna();
-    $('b_scatta').disabled = false;
-  } catch (e) { $('stato').textContent = 'Fotocamera non disponibile: ' + e.message; }
-};
+    attivo = true; firma = ''; $('vuoto').style.display = 'none';
+    $('b_avvia').textContent = 'Ferma'; $('b_avvia').classList.add('ferma');
+    try { blocco = await navigator.wakeLock?.request('screen'); } catch (e) {}   // schermo sempre acceso
+    anteprima(); ciclo();
+  } catch (e) { esito('ko', '!', 'Fotocamera non disponibile', e.message); }
+}
 
-$('b_scatta').onclick = async () => {
-  const v = $('video'), { sx, sy, sw, sh } = riquadroGuida(v.videoWidth, v.videoHeight);
-  const fotogramma = await createImageBitmap(v);  // fissa il fotogramma prima dell'inferenza
-  await verifica(fotogramma, sx, sy, sw, sh);
-};
+function ferma() {
+  attivo = false;
+  const v = $('video'); v.srcObject?.getTracks().forEach(t => t.stop()); v.srcObject = null;
+  blocco?.release(); blocco = null;
+  $('b_avvia').textContent = 'Avvia fotocamera'; $('b_avvia').classList.remove('ferma');
+}
 
-// Foto caricata: usata intera, si assume già ritagliata come quelle di addestramento
-$('file').onchange = async ev => {
+$('b_avvia').onclick = () => attivo ? ferma() : avvia();
+
+$('file').onchange = async ev => {                  // foto: stesso ritaglio centrale, esito immediato
   const f = ev.target.files[0]; if (!f) return;
-  const img = await createImageBitmap(f, { colorSpaceConversion: 'none' });  // come cv2: profilo colore ignorato
-  await verifica(img, 0, 0, img.width, img.height);
+  if (attivo) ferma();
+  const img = await createImageBitmap(f, { colorSpaceConversion: 'none' });
+  ritaglio = riquadro(img.width, img.height);
+  const t0 = performance.now();
+  rilevamenti = await rileva(img, ritaglio);
+  $('info').textContent = `foto · ${Math.round(performance.now() - t0)} ms · ${backend} · soglia ${SOGLIA}`;
+  $('vuoto').style.display = 'none'; disegna(img); firma = ''; valuta(false);
   ev.target.value = '';
 };
 
