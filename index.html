@@ -3,72 +3,78 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1020">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-title" content="Verifica kit">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icona-180.png">
 <title>Verifica kit</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap">
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort.webgpu.min.js"></script>
 <style>
-  :root { --bg:#0b1020; --card:#121935; --linea:#1b2340; --txt:#f2f4fa; --mute:#9aa3c0; --tenue:#5d6688;
-          --ok:#34d399; --ko:#f05252; --attesa:#fbbf24; --stato:#5d6688; --alone:rgba(93,102,136,.18); }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--txt); font-family: "Space Grotesk", -apple-system, system-ui, sans-serif; }
-  main { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;
-         padding: max(18px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); }
-  body.ok { --stato: var(--ok); --alone: rgba(52,211,153,.18); }
-  body.ko { --stato: var(--ko); --alone: rgba(240,82,82,.18); }
-  body.attesa { --stato: var(--attesa); --alone: rgba(251,191,36,.16); }
+  :root { --sfondo:#000; --gruppo:#1c1c1e; --sep:#38383a; --sec:#8e8e93; --blu:#0a84ff;
+          --verde:#30d158; --rosso:#ff453a; --giallo:#ffd60a; --grigio:#636366; --stato:#3a3a3c; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--sfondo); color: #fff; -webkit-font-smoothing: antialiased;
+         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif; }
+  body.ok { --stato: var(--verde); } body.ko { --stato: var(--rosso); } body.attesa { --stato: var(--giallo); }
+  main { max-width: 520px; margin: 0 auto; padding: max(12px, env(safe-area-inset-top)) 0 calc(96px + env(safe-area-inset-bottom)); }
 
-  header { display: flex; justify-content: space-between; align-items: baseline; }
-  h1 { font-size: 21px; margin: 0; font-weight: 700; letter-spacing: -0.01em; }
-  .sub { font-size: 12px; color: var(--mute); }
+  .nav { display: flex; justify-content: space-between; align-items: flex-end; padding: 8px 16px 10px; }
+  h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: .2px; }
+  #live { font-size: 13px; font-weight: 600; color: var(--sec); background: #1c1c1e; padding: 5px 10px; border-radius: 999px;
+          display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  #live i { width: 7px; height: 7px; border-radius: 50%; background: var(--grigio); }
+  #live.on { color: var(--verde); background: rgba(48,209,88,.16); } #live.on i { background: var(--verde); }
 
-  .vista { position: relative; aspect-ratio: 2994 / 2400; border-radius: 22px; overflow: hidden; background: #050814;
-           border: 3px solid var(--stato); box-shadow: 0 0 0 6px var(--alone); transition: border-color .25s, box-shadow .25s; }
+  .seg { margin: 0 16px 12px; background: #1c1c1e; border-radius: 9px; padding: 2px; display: grid; grid-template-columns: 1fr 1fr; }
+  .seg button, .seg label { font: inherit; font-size: 13px; font-weight: 600; color: #ebebf5; background: none; border: 0;
+          padding: 7px 0; border-radius: 7px; text-align: center; }
+  .seg .on { background: var(--grigio); color: #fff; }
+
+  .vista { position: relative; margin: 0 16px; aspect-ratio: 2994 / 2400; border-radius: 14px; overflow: hidden; background: #111;
+           outline: 3px solid var(--stato); outline-offset: -3px; transition: outline-color .25s; }
   #tela { width: 100%; height: 100%; display: block; }
   #vuoto { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px;
-           color: var(--mute); font-size: 15px; line-height: 1.45; }
-  #vuoto b { display: block; color: var(--txt); font-size: 17px; margin-bottom: 4px; }
+           color: var(--sec); font-size: 15px; line-height: 1.4; }
+  #vuoto b { display: block; color: #fff; font-size: 17px; margin-bottom: 4px; }
 
-  .centro { display: flex; justify-content: center; }
-  .anello { position: relative; width: 200px; height: 200px; }
-  .anello svg { display: block; }
-  .anello circle { transition: stroke .25s; }
-  .testo { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; }
-  #numero { font-size: 54px; font-weight: 700; line-height: 1; }
-  #numero span { color: var(--tenue); }
-  #messaggio { font-size: 15px; font-weight: 600; color: var(--stato); max-width: 150px; line-height: 1.25; }
+  .gruppo { margin: 14px 16px 0; background: var(--gruppo); border-radius: 12px; overflow: hidden; }
+  .hero { display: flex; align-items: center; gap: 14px; padding: 12px 14px; }
+  .anello { position: relative; width: 88px; height: 88px; flex: none; }
+  #arco { transition: stroke-dasharray .45s ease, stroke .45s ease; }
+  #spunta { position: absolute; inset: 24px; display: none; }
+  body.completo #spunta { display: block; } body.completo #numero { display: none; }
+  #numero { position: absolute; inset: 0; display: grid; place-items: center; font-size: 21px; font-weight: 700; }
+  #titolo { font-size: 20px; font-weight: 700; color: var(--stato); transition: color .25s; }
+  body:not(.ok):not(.ko):not(.attesa) #titolo { color: #fff; }
+  #sottotitolo { font-size: 15px; color: var(--sec); margin-top: 2px; }
 
-  #chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-  .chip { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .tondo { position: relative; width: 50px; height: 50px; border-radius: 50%; border: 2px solid var(--tenue);
-           display: grid; place-items: center; background: rgba(255,255,255,.04); color: var(--tenue); transition: .2s; }
-  .chip.si .tondo { border-color: var(--ok); color: var(--ok); }
-  .chip.no .tondo { border-color: var(--ko); color: var(--ko); }
-  .conta { position: absolute; top: -6px; right: -8px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px;
-           background: var(--txt); color: var(--bg); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
-  .chip.no .conta { background: var(--ko); color: #fff; }
-  .chip .nome { font-size: 12px; color: #c5cbe0; }
+  .etich { margin: 22px 32px 6px; font-size: 13px; color: var(--sec); text-transform: uppercase; letter-spacing: .3px; }
+  .riga { display: flex; align-items: center; min-height: 44px; }
+  .tile { width: 30px; height: 30px; border-radius: 7px; display: grid; place-items: center; margin: 0 12px 0 16px; flex: none; }
+  .cella { flex: 1; display: flex; align-items: center; gap: 8px; min-height: 44px; padding-right: 16px; font-size: 17px;
+           border-bottom: .5px solid var(--sep); }
+  .riga:last-child .cella { border-bottom: 0; }
+  .cella span:first-child { flex: 1; }
+  .val { color: var(--sec); font-variant-numeric: tabular-nums; }
+  .solo { margin-left: 16px; }
 
-  #dati { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--linea);
-          border: 1px solid var(--linea); border-radius: 14px; overflow: hidden; }
-  #dati div { padding: 9px 12px; display: flex; flex-direction: column; gap: 3px; background: var(--bg); }
-  #dati small { font-size: 10px; letter-spacing: .1em; color: var(--tenue); }
-  #dati b { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-
-  .comandi { display: flex; gap: 10px; }
-  #b_avvia { flex: 1; height: 52px; border: 0; border-radius: 999px; background: var(--txt); color: var(--bg);
-             font: inherit; font-size: 16px; font-weight: 700; }
-  #b_avvia:disabled { opacity: .4; }
-  #b_avvia.ferma { background: transparent; color: var(--txt); border: 1px solid var(--linea); }
-  .secondario { height: 52px; padding: 0 18px; border-radius: 999px; border: 1px solid var(--linea); color: var(--txt);
-                font-size: 15px; display: grid; place-items: center; white-space: nowrap; }
+  .barra { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+           background: rgba(18,18,20,.92); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+           border-top: .5px solid var(--sep); }
+  .barra div { max-width: 488px; margin: 0 auto; display: flex; gap: 10px; }
+  #b_avvia { flex: 1; height: 50px; border: 0; border-radius: 14px; background: var(--blu); color: #fff;
+             font: inherit; font-size: 17px; font-weight: 600; }
+  #b_avvia:disabled { background: #2c2c2e; color: var(--sec); }
+  #b_avvia.ferma { background: #2c2c2e; color: var(--rosso); }
+  .b_foto { width: 50px; height: 50px; border-radius: 14px; background: #2c2c2e; display: grid; place-items: center; }
   #video { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 </style>
 </head>
 <body>
 <main>
-  <header><h1>Verifica kit</h1><span class="sub">YOLO26n · nel telefono</span></header>
+  <div class="nav"><h1>Verifica kit</h1><div id="live"><i></i>Tempo reale</div></div>
+  <div class="seg"><button id="s_cam" class="on">Fotocamera</button><label id="s_foto" for="file">Foto</label></div>
 
   <div class="vista">
     <canvas id="tela"></canvas>
@@ -76,33 +82,39 @@
       Il kit è completo con almeno una moneta, chiavi, una pila e un accendino.</div></div>
   </div>
 
-  <div class="centro"><div class="anello">
-    <svg width="200" height="200" viewBox="0 0 200 200" aria-hidden="true">
-      <circle cx="100" cy="100" r="80" fill="none" stroke="#1b2340" stroke-width="14"></circle>
-      <circle id="seg0" cx="100" cy="100" r="80" fill="none" stroke-width="14" stroke-linecap="round"></circle>
-      <circle id="seg1" cx="100" cy="100" r="80" fill="none" stroke-width="14" stroke-linecap="round"></circle>
-      <circle id="seg2" cx="100" cy="100" r="80" fill="none" stroke-width="14" stroke-linecap="round"></circle>
-      <circle id="seg3" cx="100" cy="100" r="80" fill="none" stroke-width="14" stroke-linecap="round"></circle>
-    </svg>
-    <div class="testo" role="status" aria-live="polite"><div id="numero">–<span>/4</span></div><div id="messaggio">Caricamento…</div></div>
-  </div></div>
-
-  <div id="chips"></div>
-
-  <div id="dati">
-    <div><small>MODELLO</small><b id="d_modello">v2b</b></div>
-    <div><small>BACKEND</small><b id="d_backend">–</b></div>
-    <div><small>SOGLIA</small><b id="d_soglia">–</b></div>
-    <div><small>TEMPO</small><b id="d_tempo">–</b></div>
-    <div><small>FPS</small><b id="d_fps">–</b></div>
-    <div><small>RILEVATI</small><b id="d_tot">–</b></div>
+  <div class="gruppo hero" role="status" aria-live="polite">
+    <div class="anello">
+      <svg width="88" height="88" viewBox="0 0 88 88" aria-hidden="true">
+        <circle cx="44" cy="44" r="34" fill="none" stroke="#2c2c2e" stroke-width="11"></circle>
+        <circle id="arco" cx="44" cy="44" r="34" fill="none" stroke-width="11" stroke-linecap="round" transform="rotate(-90 44 44)"></circle>
+      </svg>
+      <div id="numero">…</div>
+      <svg id="spunta" width="40" height="40" viewBox="0 0 24 24" aria-label="kit completo"><path d="M5.5 12.5l4.2 4.2L18.5 7.8" fill="none" stroke="#30d158" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <div><div id="titolo">Caricamento</div><div id="sottotitolo">Preparazione del modello</div></div>
   </div>
 
-  <div class="comandi">
-    <button id="b_avvia" disabled>Caricamento…</button>
-    <label class="secondario">Carica foto <input type="file" id="file" accept="image/*" hidden></label>
+  <div class="etich">Oggetti rilevati</div>
+  <div class="gruppo" style="margin-top:0" id="oggetti"></div>
+
+  <div class="etich">Dettagli</div>
+  <div class="gruppo" style="margin-top:0">
+    <div class="riga"><div class="cella solo"><span>Modello</span><span class="val" id="d_modello">v2b</span></div></div>
+    <div class="riga"><div class="cella solo"><span>Backend</span><span class="val" id="d_backend">–</span></div></div>
+    <div class="riga"><div class="cella solo"><span>Soglia</span><span class="val" id="d_soglia">–</span></div></div>
+    <div class="riga"><div class="cella solo"><span>Tempo per immagine</span><span class="val" id="d_tempo">–</span></div></div>
+    <div class="riga"><div class="cella solo"><span>Immagini al secondo</span><span class="val" id="d_fps">–</span></div></div>
+    <div class="riga"><div class="cella solo"><span>Riquadri rilevati</span><span class="val" id="d_tot">–</span></div></div>
   </div>
 </main>
+
+<div class="barra"><div>
+  <button id="b_avvia" disabled>Caricamento…</button>
+  <label class="b_foto" for="file" aria-label="Analizza una foto">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a84ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg>
+  </label>
+  <input type="file" id="file" accept="image/*" hidden>
+</div></div>
 <video id="video" playsinline muted></video>
 
 <script>
@@ -115,8 +127,14 @@ const ICONE = {
   chiavi: '<circle cx="7.5" cy="12" r="4"/><path d="M11.5 12H21M17 12v3M20 12v2"/>',
   pila: '<rect x="3" y="8" width="15" height="8" rx="2"/><path d="M20 11v2M7 12h4"/>',
   accendino: '<rect x="7" y="9" width="10" height="12" rx="2"/><path d="M12 2c1.6 1.8 2 3.3 0 5.2C10 5.3 10.4 3.8 12 2z"/>' };
-const TIPI = [ { nome: 'moneta', col: '#fbbf24' }, { nome: 'chiavi', col: '#60a5fa' },
-               { nome: 'pila', col: '#f472b6' }, { nome: 'accendino', col: '#fb923c' } ];
+const TIPI = [ { nome: 'moneta', etichetta: 'Monete', col: '#ff9f0a', f: ['rilevata', 'rilevate'] },
+               { nome: 'chiavi', etichetta: 'Chiavi', col: '#0a84ff', f: ['rilevata', 'rilevate'] },
+               { nome: 'pila', etichetta: 'Pila AAA', col: '#ff375f', f: ['rilevata', 'rilevate'] },
+               { nome: 'accendino', etichetta: 'Accendino', col: '#ff6b2c', f: ['rilevato', 'rilevati'] } ];
+const SPUNTA = {
+  si: '<svg width="22" height="22" viewBox="0 0 24 24" aria-label="presente"><circle cx="12" cy="12" r="11" fill="#30d158"/><path d="M7 12.4l3.2 3.2L17 8.8" fill="none" stroke="#000" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  no: '<svg width="22" height="22" viewBox="0 0 24 24" aria-label="manca"><circle cx="12" cy="12" r="11" fill="#ff453a"/><path d="M8.3 8.3l7.4 7.4M15.7 8.3l-7.4 7.4" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  attesa: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="#48484a" stroke-width="2"/></svg>' };
 const LATO = 640, RAPPORTO = 2994 / 2400, STABILE_MS = 500;
 const par = new URLSearchParams(location.search);
 const SOGLIA = parseFloat(par.get('soglia') || '0.5');   // ?soglia=0.6 per cambiarla
@@ -126,34 +144,34 @@ let sessione, backend, attivo = false, rilevamenti = [], ritaglio = null, firma 
 ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/';
 if (!self.crossOriginIsolated) ort.env.wasm.numThreads = 1;
 
-// Anello: 4 segmenti, uno per tipo di oggetto
-const C = 2 * Math.PI * 80, GAP = 26, SEG = C / 4 - GAP;
-for (let i = 0; i < 4; i++) {
-  const s = $('seg' + i);
-  s.setAttribute('stroke-dasharray', `${SEG} ${C - SEG}`);
-  s.setAttribute('transform', `rotate(${-90 + (GAP / 2) / C * 360 + i * 90} 100 100)`);
-  s.setAttribute('stroke', '#2a3357');
+// Anello continuo: avanza di un quarto per ogni tipo trovato; colore da rosso a verde
+const C = 2 * Math.PI * 34;
+const COLORI = ['#ff453a', '#ff9f0a', '#ffd60a', '#a8e05f', '#30d158'];   // 0, 1, 2, 3, 4 tipi su 4
+function arco(frazione, colore) {
+  const a = $('arco'), l = Math.max(0, Math.min(1, frazione)) * C;
+  a.style.strokeDasharray = `${l} ${C}`;
+  a.style.opacity = l > 0 ? 1 : 0;                 // con 0 non resta un puntino
+  a.setAttribute('stroke', colore);
 }
-$('chips').innerHTML = TIPI.map((t, i) => `<div class="chip" id="chip${i}"><div class="tondo">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONE[t.nome]}</svg>
-  <span class="conta" id="conta${i}">0</span></div><div class="nome">${t.nome}</div></div>`).join('');
-$('d_soglia').textContent = SOGLIA.toFixed(2);
+arco(0, '#ffffff');
+$('oggetti').innerHTML = TIPI.map((t, i) => `<div class="riga"><div class="tile" style="background:${t.col}">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONE[t.nome]}</svg></div>
+  <div class="cella"><span>${t.etichetta}</span><span class="val" id="conta${i}">–</span><span id="spunta${i}">${SPUNTA.attesa}</span></div></div>`).join('');
+$('d_modello').textContent = MODELLO;
+$('d_soglia').textContent = SOGLIA.toFixed(2).replace('.', ',');
 
-function stato(classe, numero, messaggio) {
-  document.body.className = classe;
-  $('numero').innerHTML = `${numero}<span>/4</span>`;
-  $('messaggio').textContent = messaggio;
+function stato(classe, numero, titolo, sottotitolo) {
+  document.body.className = classe + (classe === 'ok' ? ' completo' : '');
+  $('numero').textContent = numero; $('titolo').textContent = titolo; $('sottotitolo').textContent = sottotitolo;
 }
 
 // --- Modello ----------------------------------------------------------------------
-// Avanzamento del caricamento: percentuale al centro, i 4 segmenti si accendono a quarti
-function caricamento(messaggio, frazione) {
-  document.body.className = '';
-  $('numero').textContent = frazione == null ? '…' : `${Math.min(99, Math.round(frazione * 100))}%`;
-  $('messaggio').textContent = messaggio;
-  for (let i = 0; i < 4; i++)
-    $('seg' + i).setAttribute('stroke', frazione != null && frazione >= (i + 1) / 4 ? '#f2f4fa' : '#2a3357');
-  $('b_avvia').textContent = messaggio;
+// Avanzamento del caricamento: percentuale al centro e arco bianco che avanza
+function caricamento(fase, frazione) {
+  const pct = frazione == null ? null : Math.min(99, Math.round(frazione * 100));
+  stato('', pct == null ? '…' : `${pct}%`, 'Caricamento modello', fase);
+  arco(frazione ?? 0, '#ffffff');
+  $('b_avvia').textContent = fase;
 }
 
 async function scaricaModello() {                   // download con avanzamento (9,4 MB)
@@ -175,19 +193,19 @@ async function scaricaModello() {                   // download con avanzamento 
 async function caricaModello() {
   let modello;
   try { caricamento('Scarico il modello', 0); modello = await scaricaModello(); }
-  catch (e) { stato('ko', '!', 'Modello non trovato'); $('b_avvia').textContent = 'Errore'; console.warn(e); return; }
+  catch (e) { stato('ko', '!', 'Modello non trovato', 'Manca best.onnx accanto alla pagina'); $('b_avvia').textContent = 'Errore'; console.warn(e); return; }
   const forza = par.get('ep');                      // ?ep=wasm per forzare la CPU
   for (const ep of forza ? [forza] : (navigator.gpu ? ['webgpu', 'wasm'] : ['wasm'])) {
     caricamento(ep === 'webgpu' ? 'Preparo la GPU' : 'Preparo il processore', 0.75);
     try { sessione = await ort.InferenceSession.create(modello, { executionProviders: [ep] }); backend = ep; break; }
     catch (e) { console.warn('Backend non disponibile:', ep, e); }
   }
-  if (!sessione) { stato('ko', '!', 'Modello non caricato'); $('b_avvia').textContent = 'Errore'; return; }
+  if (!sessione) { stato('ko', '!', 'Modello non caricato', 'Vedi la console del browser'); $('b_avvia').textContent = 'Errore'; return; }
   caricamento('Primo avvio del modello', 0.9);
   await inferenza(new Float32Array(3 * LATO * LATO).fill(114 / 255));   // riscaldamento
-  $('d_backend').textContent = backend === 'webgpu' ? 'WebGPU' : 'WASM';
-  for (let i = 0; i < 4; i++) $('seg' + i).setAttribute('stroke', '#2a3357');
-  stato('', '–', 'Pronto');
+  $('d_backend').textContent = backend === 'webgpu' ? 'WebGPU' : 'WebAssembly';
+  arco(0, '#ffffff');
+  stato('', '–', 'Pronto', 'Tocca Avvia e inquadra la busta');
   $('b_avvia').textContent = 'Avvia';
   $('b_avvia').disabled = false;
 }
@@ -264,18 +282,18 @@ function valuta(dalVivo) {
   const conteggi = TIPI.map((_, i) => rilevamenti.filter(d => d.tipo === i).length);
   const presenti = conteggi.map(n => n > 0);
   presenti.forEach((p, i) => {
-    $('chip' + i).className = 'chip ' + (p ? 'si' : 'no');
-    $('conta' + i).textContent = conteggi[i];
-    $('seg' + i).setAttribute('stroke', p ? '#34d399' : '#f05252');
+    const n = conteggi[i], t = TIPI[i];
+    $('conta' + i).textContent = n === 0 ? (t.f[0] === 'rilevato' ? 'nessuno' : 'nessuna') : `${n} ${n === 1 ? t.f[0] : t.f[1]}`;
+    $('spunta' + i).innerHTML = p ? SPUNTA.si : SPUNTA.no;
   });
-  const n = presenti.filter(Boolean).length;
   $('d_tot').textContent = rilevamenti.length;
-  const sig = presenti.join(), ora = performance.now();
+  const n = presenti.filter(Boolean).length, sig = presenti.join(), ora = performance.now();
+  arco(n / 4, COLORI[n]);
   if (sig !== firma) { firma = sig; dal = ora; }
-  if (dalVivo && ora - dal < STABILE_MS) { stato('attesa', n, 'In verifica…'); return; }
+  if (dalVivo && ora - dal < STABILE_MS) { stato('attesa', `${n}/4`, 'In verifica…', 'Tieni fermo il telefono'); return; }
   const mancanti = TIPI.filter((_, i) => !presenti[i]).map(t => t.nome);
-  if (!mancanti.length) stato('ok', n, 'Kit completo');
-  else stato('ko', n, mancanti.length === 1 ? `Manca: ${mancanti[0]}` : `Mancano: ${mancanti.join(', ')}`);
+  if (!mancanti.length) stato('ok', '4/4', 'Kit completo', 'Tutti e 4 gli oggetti presenti');
+  else stato('ko', `${n}/4`, 'Kit incompleto', (mancanti.length === 1 ? 'Manca: ' : 'Mancano: ') + mancanti.join(', '));
 }
 
 // --- Disegno -----------------------------------------------------------------------
@@ -286,15 +304,15 @@ function disegna(sorgente) {
   const g = t.getContext('2d');
   g.drawImage(sorgente, rq.sx, rq.sy, rq.sw, rq.sh, 0, 0, W, H);
   const s = W / 600;
-  g.lineWidth = 2.5 * s; g.font = `600 ${13 * s}px "Space Grotesk", system-ui, sans-serif`;
+  g.lineWidth = 3 * s; g.font = `600 ${13 * s}px -apple-system, "Inter", system-ui, sans-serif`;
   for (const d of rilevamenti) {
     const x = d.x1 * k, y = d.y1 * k, w = (d.x2 - d.x1) * k, h = (d.y2 - d.y1) * k;
     g.strokeStyle = g.fillStyle = '#ffffff';
-    g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, 8 * s) : g.rect(x, y, w, h); g.stroke();
-    const testo = `${TIPI[d.tipo].nome} ${d.conf.toFixed(2)}`, tw = g.measureText(testo).width + 12 * s, th = 20 * s;
-    const ty = y - th - 3 * s < 0 ? y + 3 * s : y - th - 3 * s;
-    g.beginPath(); g.roundRect ? g.roundRect(x, ty, tw, th, 10 * s) : g.rect(x, ty, tw, th); g.fill();
-    g.fillStyle = '#0b1020'; g.fillText(testo, x + 6 * s, ty + 14.5 * s);
+    g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, 9 * s) : g.rect(x, y, w, h); g.stroke();
+    const testo = `${TIPI[d.tipo].nome} ${d.conf.toFixed(2)}`, tw = g.measureText(testo).width + 14 * s, th = 21 * s;
+    const ty = y - th - 4 * s < 0 ? y + 4 * s : y - th - 4 * s;
+    g.beginPath(); g.roundRect ? g.roundRect(x, ty, tw, th, th / 2) : g.rect(x, ty, tw, th); g.fill();
+    g.fillStyle = '#000000'; g.fillText(testo, x + 7 * s, ty + 15 * s);
   }
 }
 
@@ -307,7 +325,7 @@ function anteprima() {                              // ~60 fps: video + ultimi r
 
 function mostraTempo(ms, fps) {
   $('d_tempo').textContent = `${Math.round(ms)} ms`;
-  $('d_fps').textContent = fps ? fps.toFixed(1) : 'foto';
+  $('d_fps').textContent = fps ? fps.toFixed(1).replace('.', ',') : '– (foto)';
 }
 
 async function ciclo() {                            // inferenza continua, un fotogramma dopo l'altro
@@ -325,31 +343,35 @@ async function ciclo() {                            // inferenza continua, un fo
 }
 
 // --- Comandi -----------------------------------------------------------------------
+function modalita(foto) { $('s_cam').classList.toggle('on', !foto); $('s_foto').classList.toggle('on', foto); }
+
 async function avvia() {
   try {
     const v = $('video');
     v.srcObject = await navigator.mediaDevices.getUserMedia({ audio: false,
       video: { facingMode: 'environment', width: { ideal: 4032 }, height: { ideal: 3024 } } });
     await v.play();
-    attivo = true; firma = ''; tempi = []; $('vuoto').style.display = 'none';
-    $('b_avvia').textContent = 'Ferma'; $('b_avvia').classList.add('ferma');
+    attivo = true; firma = ''; tempi = []; $('vuoto').style.display = 'none'; modalita(false);
+    $('b_avvia').textContent = 'Ferma'; $('b_avvia').classList.add('ferma'); $('live').classList.add('on');
     try { blocco = await navigator.wakeLock?.request('screen'); } catch (e) {}   // schermo sempre acceso
     anteprima(); ciclo();
-  } catch (e) { stato('ko', '!', 'Fotocamera non disponibile'); console.warn(e); }
+  } catch (e) { stato('ko', '!', 'Fotocamera non disponibile', e.message); console.warn(e); }
 }
 
 function ferma() {
   attivo = false;
   const v = $('video'); v.srcObject?.getTracks().forEach(t => t.stop()); v.srcObject = null;
   blocco?.release(); blocco = null;
-  $('b_avvia').textContent = 'Avvia'; $('b_avvia').classList.remove('ferma');
+  $('b_avvia').textContent = 'Avvia'; $('b_avvia').classList.remove('ferma'); $('live').classList.remove('on');
 }
 
 $('b_avvia').onclick = () => attivo ? ferma() : avvia();
+$('s_cam').onclick = () => { if (!attivo && sessione) avvia(); };
 
 $('file').onchange = async ev => {                  // foto: stesso ritaglio centrale, esito immediato
-  const f = ev.target.files[0]; if (!f) return;
+  const f = ev.target.files[0]; if (!f || !sessione) return;
   if (attivo) ferma();
+  modalita(true);
   const img = await createImageBitmap(f, { colorSpaceConversion: 'none' });
   ritaglio = riquadro(img.width, img.height);
   const t0 = performance.now();
